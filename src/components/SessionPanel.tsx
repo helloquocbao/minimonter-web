@@ -10,19 +10,27 @@ interface SessionPanelProps {
   isRecording: boolean;
   distanceMeters: number;
   pathLength: number;
+  loopCapMeters: number;
   onStart: () => void;
   onStop: () => RecordedSession | null;
   onSubmitted: () => void;
 }
 
 const MODE_LABEL: Record<SessionTypeName, string> = {
-  Bank: "Tích km (Bank) — nạp khiên",
-  Claim: "Chiếm căn cứ (Claim) — đi vòng quanh 1 điểm chưa ai chiếm",
-  Attack: "Tấn công (Attack) — đi vòng quanh (các) căn cứ muốn đánh",
+  Claim: "Chiếm đất (Claim) — đi vòng quanh 1 khu chưa ai chiếm để tô màu lãnh thổ",
+  Reinforce: "Gia cố (Reinforce) — đi vòng quanh Base của mình để hồi 100% lãnh thổ",
 };
 
-export function SessionPanel({ isRecording, distanceMeters, pathLength, onStart, onStop, onSubmitted }: SessionPanelProps) {
-  const [mode, setMode] = useState<SessionTypeName>("Bank");
+export function SessionPanel({
+  isRecording,
+  distanceMeters,
+  pathLength,
+  loopCapMeters,
+  onStart,
+  onStop,
+  onSubmitted,
+}: SessionPanelProps) {
+  const [mode, setMode] = useState<SessionTypeName>("Claim");
   const [status, setStatus] = useState<string | null>(null);
   const [statusIsError, setStatusIsError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -52,8 +60,8 @@ export function SessionPanel({ isRecording, distanceMeters, pathLength, onStart,
       await switchToChain(SEPOLIA_CHAIN_ID);
       const contract = await getTerraSessionWriteContract();
 
-      // Bank doesn't care about location; Claim/Attack both resolve against the loop's center.
-      const point = mode === "Bank" ? session.startedAt : centroid(session.path);
+      // Both Claim and Reinforce resolve against the loop's center.
+      const point = centroid(session.path);
       const tx = await contract.recordSession(
         SESSION_TYPE[mode],
         toMicroDegrees(point.lat),
@@ -108,6 +116,8 @@ export function SessionPanel({ isRecording, distanceMeters, pathLength, onStart,
     <div className="panel session-panel">
       <h3>Ghi hành trình</h3>
 
+      <p className="hint">Giới hạn quãng đường mỗi lần đi hiện tại: {loopCapMeters}m (tăng dần theo tổng km đã đi).</p>
+
       <select value={mode} onChange={(e) => setMode(e.target.value as SessionTypeName)} disabled={isRecording}>
         {Object.entries(MODE_LABEL).map(([key, label]) => (
           <option key={key} value={key}>
@@ -116,8 +126,8 @@ export function SessionPanel({ isRecording, distanceMeters, pathLength, onStart,
         ))}
       </select>
 
-      {mode === "Attack" && (
-        <p className="hint">Mọi căn cứ có tâm nằm trong vòng bạn đi đều sẽ bị tấn công cùng lúc — không cần chọn trước.</p>
+      {mode === "Reinforce" && (
+        <p className="hint">Vòng đi phải bao quanh tâm 1 Base của chính bạn — thành công sẽ hồi 100% lãnh thổ bị bot phá.</p>
       )}
 
       {!isRecording ? (

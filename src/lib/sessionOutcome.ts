@@ -36,23 +36,14 @@ export async function pollSessionOutcome(
   while (Date.now() < deadline) {
     onTick?.(Date.now() - startedAt);
 
-    if (mode === "Bank") {
-      const events = await game.queryFilter(game.filters.MetersBanked(player, sessionId), fromBlock);
-      if (events.length > 0) {
-        const e = events[0] as EventLog;
-        return {
-          success: true,
-          message: `Đã nạp ${e.args.metersAdded}m vào khiên (hiện có ${e.args.newBalance}m trong túi).`,
-        };
-      }
-    } else if (mode === "Claim") {
+    if (mode === "Claim") {
       const [claimed, rejected] = await Promise.all([
         game.queryFilter(game.filters.BaseClaimed(undefined, player, sessionId), fromBlock),
         game.queryFilter(game.filters.ClaimRejected(player, sessionId), fromBlock),
       ]);
       if (claimed.length > 0) {
         const e = claimed[0] as EventLog;
-        return { success: true, message: `Chiếm thành công! Base #${e.args.baseId}.` };
+        return { success: true, message: `Chiếm thành công! Base #${e.args.baseId} — diện tích ${e.args.areaMeters}m².` };
       }
       if (rejected.length > 0) {
         const e = rejected[0] as EventLog;
@@ -62,29 +53,20 @@ export async function pollSessionOutcome(
         };
       }
     } else {
-      const [attacked, missed, rejected] = await Promise.all([
-        game.queryFilter(game.filters.BaseAttacked(undefined, player), fromBlock),
-        game.queryFilter(game.filters.AttackMissed(player, sessionId), fromBlock),
-        game.queryFilter(game.filters.AttackRejected(player, sessionId), fromBlock),
+      const [reinforced, rejected] = await Promise.all([
+        game.queryFilter(game.filters.BaseReinforced(undefined, player, sessionId), fromBlock),
+        game.queryFilter(game.filters.ReinforceRejected(player, sessionId), fromBlock),
       ]);
-      const mine = (attacked as EventLog[]).filter((e) => e.args.sessionId === sessionId);
-      if (mine.length > 0) {
-        const captured = mine.filter((e) => e.args.captured).length;
-        const repelled = mine.length - captured;
+      if (reinforced.length > 0) {
+        const e = reinforced[0] as EventLog;
         return {
           success: true,
-          message: `Tấn công trúng ${mine.length} căn cứ — chiếm được ${captured}, bị đẩy lùi ${repelled}.`,
-        };
-      }
-      if (missed.length > 0) {
-        return {
-          success: false,
-          message: "Không có căn cứ nào trong vòng bạn vừa đi — quãng đường đã mất, không có gì xảy ra.",
+          message: `Gia cố thành công! Base #${e.args.baseId} đã hồi phục 100% lãnh thổ (${e.args.restoredAreaMeters}m²).`,
         };
       }
       if (rejected.length > 0) {
         const e = rejected[0] as EventLog;
-        return { success: false, message: `Tấn công thất bại: ${e.args.reason}.` };
+        return { success: false, message: `Gia cố thất bại: ${e.args.reason}.` };
       }
     }
 

@@ -1,14 +1,24 @@
 [
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_terraToken",
-        "type": "address"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable",
     "type": "constructor"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "sessionsSinceLastAttack",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "required",
+        "type": "uint256"
+      }
+    ],
+    "name": "BotAttackNotReady",
+    "type": "error"
   },
   {
     "inputs": [
@@ -25,99 +35,6 @@
     "inputs": [],
     "name": "NotOwner",
     "type": "error"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "attacker",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "sessionId",
-        "type": "uint256"
-      }
-    ],
-    "name": "AttackMissed",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "attacker",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "sessionId",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "reason",
-        "type": "string"
-      }
-    ],
-    "name": "AttackRejected",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "baseId",
-        "type": "uint256"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "attacker",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "defender",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint32",
-        "name": "attackPower",
-        "type": "uint32"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint32",
-        "name": "defensePower",
-        "type": "uint32"
-      },
-      {
-        "indexed": false,
-        "internalType": "bool",
-        "name": "captured",
-        "type": "bool"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "sessionId",
-        "type": "uint256"
-      }
-    ],
-    "name": "BaseAttacked",
-    "type": "event"
   },
   {
     "anonymous": false,
@@ -161,11 +78,117 @@
       {
         "indexed": false,
         "internalType": "uint32",
-        "name": "powerMeters",
+        "name": "areaMeters",
         "type": "uint32"
       }
     ],
     "name": "BaseClaimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "baseId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "areaLost",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "areaRemaining",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "destroyed",
+        "type": "bool"
+      }
+    ],
+    "name": "BaseDamaged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "baseId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "sessionId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "restoredAreaMeters",
+        "type": "uint32"
+      }
+    ],
+    "name": "BaseReinforced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "attackIndex",
+        "type": "uint256"
+      }
+    ],
+    "name": "BotAttackFizzled",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "baseId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "attackIndex",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "damagePercent",
+        "type": "uint256"
+      }
+    ],
+    "name": "BotAttackTriggered",
     "type": "event"
   },
   {
@@ -203,25 +226,19 @@
         "type": "address"
       },
       {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "sessionId",
-        "type": "uint256"
-      },
-      {
         "indexed": false,
         "internalType": "uint32",
-        "name": "metersAdded",
+        "name": "newCumulativeMeters",
         "type": "uint32"
       },
       {
         "indexed": false,
         "internalType": "uint32",
-        "name": "newBalance",
+        "name": "newLoopCapMeters",
         "type": "uint32"
       }
     ],
-    "name": "MetersBanked",
+    "name": "LoopCapIncreased",
     "type": "event"
   },
   {
@@ -234,19 +251,19 @@
         "type": "address"
       },
       {
-        "indexed": false,
-        "internalType": "uint16",
-        "name": "totalSlots",
-        "type": "uint16"
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "sessionId",
+        "type": "uint256"
       },
       {
         "indexed": false,
-        "internalType": "uint32",
-        "name": "newCapacity",
-        "type": "uint32"
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
       }
     ],
-    "name": "SlotPurchased",
+    "name": "ReinforceRejected",
     "type": "event"
   },
   {
@@ -277,12 +294,64 @@
   },
   {
     "inputs": [],
-    "name": "BASE_FREE_CAPACITY_METERS",
+    "name": "AREA_SCALE",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "BASE_LOOP_CAP_METERS",
     "outputs": [
       {
         "internalType": "uint32",
         "name": "",
         "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "BOT_ATTACK_TX_INTERVAL",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "BOT_MAX_DAMAGE_PERCENT",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "BOT_MIN_DAMAGE_PERCENT",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -304,6 +373,32 @@
   {
     "inputs": [],
     "name": "CIRCUMFERENCE_TO_RADIUS_SCALED",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "LOOP_CAP_GROWTH_PER_LEVEL",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_LOOP_CAP_LEVELS",
     "outputs": [
       {
         "internalType": "uint32",
@@ -355,7 +450,7 @@
   },
   {
     "inputs": [],
-    "name": "METERS_PER_SLOT",
+    "name": "METERS_PER_LEVEL",
     "outputs": [
       {
         "internalType": "uint32",
@@ -374,32 +469,6 @@
         "internalType": "uint32",
         "name": "",
         "type": "uint32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "SESSION_ATTACK",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "SESSION_BANK",
-    "outputs": [
-      {
-        "internalType": "uint8",
-        "name": "",
-        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -433,12 +502,12 @@
   },
   {
     "inputs": [],
-    "name": "SLOT_PRICE",
+    "name": "SESSION_REINFORCE",
     "outputs": [
       {
-        "internalType": "uint256",
+        "internalType": "uint8",
         "name": "",
-        "type": "uint256"
+        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -489,7 +558,12 @@
       },
       {
         "internalType": "uint32",
-        "name": "powerMeters",
+        "name": "initialAreaMeters",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "currentAreaMeters",
         "type": "uint32"
       },
       {
@@ -502,16 +576,36 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint16",
-        "name": "count",
-        "type": "uint16"
-      }
-    ],
-    "name": "buySlot",
+    "inputs": [],
+    "name": "botAttack",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "botAttackCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "botAttackReady",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -522,7 +616,7 @@
         "type": "address"
       }
     ],
-    "name": "capacityOf",
+    "name": "cumulativeMetersOf",
     "outputs": [
       {
         "internalType": "uint32",
@@ -601,6 +695,38 @@
   },
   {
     "inputs": [],
+    "name": "lastBotAttackAtSessionCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      }
+    ],
+    "name": "loopCapOf",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "nextBaseId",
     "outputs": [
       {
@@ -637,13 +763,8 @@
     "outputs": [
       {
         "internalType": "uint32",
-        "name": "walletMeters",
+        "name": "cumulativeMeters",
         "type": "uint32"
-      },
-      {
-        "internalType": "uint16",
-        "name": "extraSlots",
-        "type": "uint16"
       }
     ],
     "stateMutability": "view",
@@ -715,31 +836,12 @@
   },
   {
     "inputs": [],
-    "name": "terraToken",
+    "name": "totalSuccessfulSessions",
     "outputs": [
       {
-        "internalType": "contract IERC20",
+        "internalType": "uint256",
         "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "player",
-        "type": "address"
-      }
-    ],
-    "name": "walletOf",
-    "outputs": [
-      {
-        "internalType": "uint32",
-        "name": "",
-        "type": "uint32"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",

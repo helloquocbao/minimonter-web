@@ -7,7 +7,8 @@ export interface BaseInfo {
   lat: number;
   lng: number;
   radiusMeters: number;
-  powerMeters: number;
+  initialAreaMeters: number;
+  currentAreaMeters: number;
 }
 
 interface IndexerBase {
@@ -16,7 +17,8 @@ interface IndexerBase {
   lat: number;
   lng: number;
   radiusMeters: number;
-  powerMeters: number;
+  initialAreaMeters: number;
+  currentAreaMeters: number;
 }
 
 const REFRESH_INTERVAL_MS = 15_000;
@@ -35,14 +37,19 @@ export function useBases() {
     const data: IndexerBase[] = await response.json();
 
     setBases(
-      data.map((b) => ({
-        id: b.id,
-        owner: b.owner,
-        lat: b.lat / 1e6,
-        lng: b.lng / 1e6,
-        radiusMeters: b.radiusMeters,
-        powerMeters: b.powerMeters,
-      }))
+      data
+        // Bases fully destroyed by a bot attack are freed (owner == zero address) — hide them
+        // from the map instead of drawing an empty/unclaimed circle.
+        .filter((b) => b.owner !== "0x0000000000000000000000000000000000000000")
+        .map((b) => ({
+          id: b.id,
+          owner: b.owner,
+          lat: b.lat / 1e6,
+          lng: b.lng / 1e6,
+          radiusMeters: b.radiusMeters,
+          initialAreaMeters: b.initialAreaMeters,
+          currentAreaMeters: b.currentAreaMeters,
+        }))
     );
     setLoading(false);
   }, []);
@@ -57,15 +64,15 @@ export function useBases() {
 }
 
 export function usePlayerState(address: string | null) {
-  const [walletMeters, setWalletMeters] = useState(0);
-  const [capacityMeters, setCapacityMeters] = useState(0);
+  const [cumulativeMeters, setCumulativeMeters] = useState(0);
+  const [loopCapMeters, setLoopCapMeters] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!address) return;
     const response = await fetch(`${INDEXER_URL}/players/${address}`);
-    const data: { walletMeters: number; capacityMeters: number } = await response.json();
-    setWalletMeters(data.walletMeters);
-    setCapacityMeters(data.capacityMeters);
+    const data: { cumulativeMeters: number; loopCapMeters: number } = await response.json();
+    setCumulativeMeters(data.cumulativeMeters);
+    setLoopCapMeters(data.loopCapMeters);
   }, [address]);
 
   useEffect(() => {
@@ -74,5 +81,5 @@ export function usePlayerState(address: string | null) {
     return () => clearInterval(interval);
   }, [refresh]);
 
-  return { walletMeters, capacityMeters, refresh };
+  return { cumulativeMeters, loopCapMeters, refresh };
 }

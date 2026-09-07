@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { WalletBar } from "./components/WalletBar";
 import { GameMap } from "./components/GameMap";
 import { SessionPanel } from "./components/SessionPanel";
-import { SlotShop } from "./components/SlotShop";
 import { useSessionRecorder } from "./hooks/useSessionRecorder";
 import { useBases, usePlayerState } from "./hooks/useGameState";
 import { connectWallet } from "./lib/web3";
@@ -16,7 +15,7 @@ export default function App() {
 
   const recorder = useSessionRecorder();
   const { bases, refresh: refreshBases } = useBases();
-  const { walletMeters, capacityMeters, refresh: refreshPlayer } = usePlayerState(address);
+  const { cumulativeMeters, loopCapMeters, refresh: refreshPlayer } = usePlayerState(address);
 
   useEffect(() => {
     if (!("geolocation" in navigator)) return;
@@ -54,12 +53,17 @@ export default function App() {
             isRecording={recorder.isRecording}
             distanceMeters={recorder.distanceMeters}
             pathLength={recorder.path.length}
+            loopCapMeters={loopCapMeters || 1000}
             onStart={recorder.start}
             onStop={recorder.stop}
             onSubmitted={handleRefreshAll}
           />
 
-          <SlotShop walletMeters={walletMeters} capacityMeters={capacityMeters} onChanged={handleRefreshAll} />
+          <div className="panel">
+            <h3>Tiến độ</h3>
+            <p>Tổng quãng đường đã đi: {cumulativeMeters}m</p>
+            <p>Giới hạn mỗi lần đi hiện tại: {loopCapMeters || 1000}m</p>
+          </div>
         </div>
       </div>
     </div>

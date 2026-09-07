@@ -5,11 +5,9 @@ import {
   SEPOLIA_CHAIN_ID,
   TERRA_CHAIN_GAME_ADDRESS,
   TERRA_SESSION_ADDRESS,
-  TERRA_TOKEN_ADDRESS,
 } from "../config";
 import terraSessionAbi from "../abi/TerraSession.json";
 import terraChainGameAbi from "../abi/TerraChainGame.json";
-import terraTokenAbi from "../abi/TerraToken.json";
 
 declare global {
   interface Window {
@@ -82,12 +80,6 @@ export async function getTerraChainGameWriteContract(): Promise<Contract> {
   const provider = await getBrowserProvider();
   const signer = await provider.getSigner();
   return new Contract(TERRA_CHAIN_GAME_ADDRESS, terraChainGameAbi, signer);
-}
-
-export async function getTerraTokenWriteContract(): Promise<Contract> {
-  const provider = await getBrowserProvider();
-  const signer = await provider.getSigner();
-  return new Contract(TERRA_TOKEN_ADDRESS, terraTokenAbi, signer);
 }
 
 export function getTerraChainGameReadContract(): Contract {

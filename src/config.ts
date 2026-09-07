@@ -6,7 +6,6 @@ export const CREDITCOIN_RPC_URL = (import.meta.env.VITE_CREDITCOIN_RPC_URL ??
   "https://rpc.cc3-testnet.creditcoin.network") as string;
 
 export const TERRA_SESSION_ADDRESS = import.meta.env.VITE_TERRA_SESSION_ADDRESS as string;
-export const TERRA_TOKEN_ADDRESS = import.meta.env.VITE_TERRA_TOKEN_ADDRESS as string;
 export const TERRA_CHAIN_GAME_ADDRESS = import.meta.env.VITE_TERRA_CHAIN_GAME_ADDRESS as string;
 
 /// Read-side backend (see ../../indexer) — the map/wallet reads go through this instead of raw
@@ -14,9 +13,8 @@ export const TERRA_CHAIN_GAME_ADDRESS = import.meta.env.VITE_TERRA_CHAIN_GAME_AD
 export const INDEXER_URL = (import.meta.env.VITE_INDEXER_URL ?? "http://localhost:4000") as string;
 
 export const SESSION_TYPE = {
-  Bank: 0,
-  Claim: 1,
-  Attack: 2,
+  Claim: 0,
+  Reinforce: 1,
 } as const;
 
 export type SessionTypeName = keyof typeof SESSION_TYPE;
