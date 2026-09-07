@@ -6,7 +6,10 @@ interface WalletBarProps {
 export function WalletBar({ address, onConnect }: WalletBarProps) {
   return (
     <div className="wallet-bar">
-      <strong>TerraChain: Circle Wars</strong>
+      <strong>
+        <span className="app-title-full">TerraChain: Circle Wars</span>
+        <span className="app-title-short">TerraChain</span>
+      </strong>
       {address ? (
         <span className="wallet-address">
           {address.slice(0, 6)}...{address.slice(-4)}
