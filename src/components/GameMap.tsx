@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Map, { Source, Layer, Marker, Popup, NavigationControl, type MapRef, type MapEvent } from "react-map-gl";
 import type { FeatureCollection, Point } from "geojson";
@@ -119,6 +119,15 @@ export function GameMap({ center, bases, currentPath, myAddress }: GameMapProps)
     return bearingDegrees(currentPath[currentPath.length - 2], currentPath[currentPath.length - 1]);
   }, [currentPath]);
 
+  // The map view is uncontrolled (initialViewState only) so the player can freely pan/zoom
+  // without fighting prop updates — but while actively recording a session we still want the
+  // camera to follow along, so nudge it via the imperative API instead of a controlled prop.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !Number.isFinite(center.lat) || !Number.isFinite(center.lng)) return;
+    map.easeTo({ center: [center.lng, center.lat], duration: 500 });
+  }, [center.lat, center.lng]);
+
   if (!MAPBOX_TOKEN) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", padding: "1rem" }}>
@@ -132,8 +141,6 @@ export function GameMap({ center, bases, currentPath, myAddress }: GameMapProps)
       ref={mapRef}
       mapboxAccessToken={MAPBOX_TOKEN}
       initialViewState={{ longitude: center.lng, latitude: center.lat, zoom: 16, pitch: 45 }}
-      longitude={undefined}
-      latitude={undefined}
       style={{ width: "100%", height: "100%" }}
       // Mapbox Standard (v3): built-in 3D buildings/terrain/sky, no extra terrain source needed.
       mapStyle="mapbox://styles/mapbox/standard"
