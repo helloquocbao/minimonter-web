@@ -1,0 +1,105 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.wallet-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: #111827;
+  color: white;
+}
+
+.wallet-address {
+  font-family: monospace;
+  background: #1f2937;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.map-container {
+  flex: 1;
+  min-width: 0;
+}
+
+.side-panels {
+  width: 320px;
+  padding: 1rem;
+  overflow-y: auto;
+  background: #f9fafb;
+  border-left: 1px solid #e5e7eb;
+}
+
+.panel {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.panel h3 {
+  margin-top: 0;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+button {
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+select {
+  width: 100%;
+  padding: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.hint {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.status {
+  font-size: 0.9rem;
+  color: #374151;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 0.9rem;
+}
