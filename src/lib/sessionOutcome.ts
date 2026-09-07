@@ -1,4 +1,5 @@
 import type { EventLog } from "ethers";
+import type { TFunction } from "i18next";
 import type { SessionTypeName } from "../config";
 import { getTerraChainGameReadContract } from "./web3";
 
@@ -20,13 +21,15 @@ export interface SessionOutcome {
  * Polls TerraChainGame on Creditcoin for the outcome of a specific session, matched by
  * (player, sessionId) — the same sessionId the player got back from TerraSession on Sepolia.
  * Every session type resolves to exactly one outcome event on-chain (success or a documented
- * rejection), so this never has to guess.
+ * rejection), so this never has to guess. `t` is the i18next translate function so outcome
+ * messages render in whichever language is currently active.
  */
 export async function pollSessionOutcome(
   mode: SessionTypeName,
   player: string,
   sessionId: bigint,
   fromBlock: number,
+  t: TFunction,
   onTick?: (elapsedMs: number) => void
 ): Promise<SessionOutcome> {
   const game = getTerraChainGameReadContract();
@@ -43,14 +46,14 @@ export async function pollSessionOutcome(
       ]);
       if (claimed.length > 0) {
         const e = claimed[0] as EventLog;
-        return { success: true, message: `Chiếm thành công! Base #${e.args.baseId} — diện tích ${e.args.areaMeters}m².` };
+        return {
+          success: true,
+          message: t("outcome.claimSuccess", { baseId: e.args.baseId.toString(), area: e.args.areaMeters.toString() }),
+        };
       }
       if (rejected.length > 0) {
         const e = rejected[0] as EventLog;
-        return {
-          success: false,
-          message: `Claim thất bại: ${e.args.reason} — bạn đã mất quãng đường vừa đi, không có gì được tạo ra.`,
-        };
+        return { success: false, message: t("outcome.claimRejected", { reason: e.args.reason }) };
       }
     } else {
       const [reinforced, rejected] = await Promise.all([
@@ -61,20 +64,20 @@ export async function pollSessionOutcome(
         const e = reinforced[0] as EventLog;
         return {
           success: true,
-          message: `Gia cố thành công! Base #${e.args.baseId} đã hồi phục 100% lãnh thổ (${e.args.restoredAreaMeters}m²).`,
+          message: t("outcome.reinforceSuccess", {
+            baseId: e.args.baseId.toString(),
+            area: e.args.restoredAreaMeters.toString(),
+          }),
         };
       }
       if (rejected.length > 0) {
         const e = rejected[0] as EventLog;
-        return { success: false, message: `Gia cố thất bại: ${e.args.reason}.` };
+        return { success: false, message: t("outcome.reinforceRejected", { reason: e.args.reason }) };
       }
     }
 
     await sleep(POLL_INTERVAL_MS);
   }
 
-  return {
-    success: false,
-    message: "Chưa thấy kết quả sau 20 phút — kiểm tra worker relayer có đang chạy không.",
-  };
+  return { success: false, message: t("outcome.timeout") };
 }

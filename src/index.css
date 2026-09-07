@@ -52,6 +52,24 @@ select {
   text-overflow: ellipsis;
 }
 
+.wallet-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.lang-switcher {
+  width: auto;
+  min-height: 36px;
+  margin-bottom: 0;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.8rem;
+  background: #1f2937;
+  color: white;
+  border-color: #374151;
+}
+
 .app-title-short {
   display: inline;
 }

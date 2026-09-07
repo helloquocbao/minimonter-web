@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { Log, LogDescription } from "ethers";
 import type { RecordedSession } from "../hooks/useSessionRecorder";
 import { centroid, toMicroDegrees } from "../lib/geo";
@@ -16,11 +17,6 @@ interface SessionPanelProps {
   onSubmitted: () => void;
 }
 
-const MODE_LABEL: Record<SessionTypeName, string> = {
-  Claim: "Chiếm đất (Claim) — đi vòng quanh 1 khu chưa ai chiếm để tô màu lãnh thổ",
-  Reinforce: "Gia cố (Reinforce) — đi vòng quanh Base của mình để hồi 100% lãnh thổ",
-};
-
 export function SessionPanel({
   isRecording,
   distanceMeters,
@@ -30,10 +26,16 @@ export function SessionPanel({
   onStop,
   onSubmitted,
 }: SessionPanelProps) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<SessionTypeName>("Claim");
   const [status, setStatus] = useState<string | null>(null);
   const [statusIsError, setStatusIsError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  const modeLabel: Record<SessionTypeName, string> = {
+    Claim: t("session.modeClaim"),
+    Reinforce: t("session.modeReinforce"),
+  };
 
   function handleStart() {
     setStatus(null);
@@ -44,14 +46,14 @@ export function SessionPanel({
   async function handleStop() {
     const session = onStop();
     if (!session) {
-      setStatus("Không ghi được vị trí nào — thử lại ở nơi có tín hiệu GPS tốt hơn.");
+      setStatus(t("session.noGps"));
       setStatusIsError(true);
       return;
     }
 
     setSubmitting(true);
     setStatusIsError(false);
-    setStatus("Đang gửi giao dịch lên Sepolia...");
+    setStatus(t("session.sendingToSepolia"));
     try {
       // Pin the block Creditcoin is at right now so the outcome poll only looks forward —
       // sessionIds are unique anyway, but this keeps each query fast and cheap.
@@ -70,7 +72,7 @@ export function SessionPanel({
         session.durationSeconds
       );
 
-      setStatus(`Đã gửi (tx: ${tx.hash.slice(0, 10)}...). Đang chờ Attestcoin Protocol xác thực cross-chain...`);
+      setStatus(t("session.sentWaitingAttestation", { hash: tx.hash.slice(0, 10) }));
       const receipt = await tx.wait();
 
       const sessionRecordedLog = receipt!.logs
@@ -84,7 +86,7 @@ export function SessionPanel({
         .find((parsed: LogDescription | null) => parsed?.name === "SessionRecorded");
 
       if (!sessionRecordedLog) {
-        setStatus("Đã gửi lên Sepolia nhưng không đọc được sessionId — kiểm tra thủ công trên block explorer.");
+        setStatus(t("session.sepoliaNoSessionId"));
         setStatusIsError(true);
         return;
       }
@@ -92,20 +94,18 @@ export function SessionPanel({
       const sessionId = sessionRecordedLog.args.sessionId as bigint;
       const player = sessionRecordedLog.args.player as string;
 
-      setStatus(
-        `Đã ghi nhận (session #${sessionId}). Đang chờ Attestcoin Protocol xác thực cross-chain — thường mất 8-15 phút...`
-      );
+      setStatus(t("session.recordedWaiting", { sessionId: sessionId.toString() }));
 
-      const outcome = await pollSessionOutcome(mode, player, sessionId, fromBlock, (elapsedMs) => {
+      const outcome = await pollSessionOutcome(mode, player, sessionId, fromBlock, t, (elapsedMs) => {
         const minutes = Math.floor(elapsedMs / 60_000);
-        setStatus(`Đang chờ kết quả session #${sessionId}... (${minutes} phút)`);
+        setStatus(t("session.waitingOutcome", { sessionId: sessionId.toString(), minutes }));
       });
 
       setStatus(outcome.message);
       setStatusIsError(!outcome.success);
       onSubmitted();
     } catch (err) {
-      setStatus(`Lỗi: ${(err as Error).message}`);
+      setStatus(t("session.errorPrefix", { message: (err as Error).message }));
       setStatusIsError(true);
     } finally {
       setSubmitting(false);
@@ -114,29 +114,27 @@ export function SessionPanel({
 
   return (
     <div className="panel session-panel">
-      <h3>Ghi hành trình</h3>
+      <h3>{t("session.title")}</h3>
 
-      <p className="hint">Giới hạn quãng đường mỗi lần đi hiện tại: {loopCapMeters}m (tăng dần theo tổng km đã đi).</p>
+      <p className="hint">{t("session.loopCapHint", { meters: loopCapMeters })}</p>
 
       <select value={mode} onChange={(e) => setMode(e.target.value as SessionTypeName)} disabled={isRecording}>
-        {Object.entries(MODE_LABEL).map(([key, label]) => (
+        {Object.entries(modeLabel).map(([key, label]) => (
           <option key={key} value={key}>
             {label}
           </option>
         ))}
       </select>
 
-      {mode === "Reinforce" && (
-        <p className="hint">Vòng đi phải bao quanh tâm 1 Base của chính bạn — thành công sẽ hồi 100% lãnh thổ bị bot phá.</p>
-      )}
+      {mode === "Reinforce" && <p className="hint">{t("session.reinforceHint")}</p>}
 
       {!isRecording ? (
         <button onClick={handleStart} disabled={submitting}>
-          Bắt đầu di chuyển
+          {t("session.start")}
         </button>
       ) : (
         <button onClick={handleStop} disabled={submitting}>
-          Kết thúc ({Math.round(distanceMeters)}m, {pathLength} điểm)
+          {t("session.stop", { meters: Math.round(distanceMeters), points: pathLength })}
         </button>
       )}
 

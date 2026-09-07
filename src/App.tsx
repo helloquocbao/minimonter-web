@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { WalletBar } from "./components/WalletBar";
 import { GameMap } from "./components/GameMap";
 import { SessionPanel } from "./components/SessionPanel";
@@ -10,6 +11,7 @@ import type { LatLng } from "./lib/geo";
 const DEFAULT_CENTER: LatLng = { lat: 21.0278, lng: 105.8342 }; // Hanoi, used until GPS is available
 
 export default function App() {
+  const { t } = useTranslation();
   const [address, setAddress] = useState<string | null>(null);
   const [center, setCenter] = useState<LatLng>(DEFAULT_CENTER);
 
@@ -60,9 +62,9 @@ export default function App() {
           />
 
           <div className="panel">
-            <h3>Tiến độ</h3>
-            <p>Tổng quãng đường đã đi: {cumulativeMeters}m</p>
-            <p>Giới hạn mỗi lần đi hiện tại: {loopCapMeters || 1000}m</p>
+            <h3>{t("progress.title")}</h3>
+            <p>{t("progress.totalDistance", { meters: cumulativeMeters })}</p>
+            <p>{t("progress.loopCap", { meters: loopCapMeters || 1000 })}</p>
           </div>
         </div>
       </div>

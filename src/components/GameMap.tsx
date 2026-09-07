@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, Circle, Polyline, Marker, Tooltip } from "react-leaflet";
 import type { LatLng } from "../lib/geo";
 import type { BaseInfo } from "../hooks/useGameState";
@@ -20,6 +21,7 @@ function colorForOwner(owner: string, myAddress: string | null): string {
 }
 
 export function GameMap({ center, bases, currentPath, myAddress }: GameMapProps) {
+  const { t } = useTranslation();
   const polylinePositions = useMemo(() => currentPath.map((p) => [p.lat, p.lng] as [number, number]), [currentPath]);
 
   return (
@@ -52,8 +54,13 @@ export function GameMap({ center, bases, currentPath, myAddress }: GameMapProps)
             }}
           >
             <Tooltip>
-              Base #{base.id} — chủ: {base.owner.slice(0, 6)}...{base.owner.slice(-4)} — lãnh thổ:{" "}
-              {base.currentAreaMeters}m² / {base.initialAreaMeters}m² ({healthPct}%)
+              {t("map.baseTooltip", {
+                id: base.id,
+                owner: `${base.owner.slice(0, 6)}...${base.owner.slice(-4)}`,
+                current: base.currentAreaMeters,
+                initial: base.initialAreaMeters,
+                pct: healthPct,
+              })}
             </Tooltip>
           </Circle>
         );
