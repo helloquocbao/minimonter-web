@@ -12,6 +12,10 @@ export const TERRA_CHAIN_GAME_ADDRESS = import.meta.env.VITE_TERRA_CHAIN_GAME_AD
 /// RPC so the app scales past a handful of concurrent players.
 export const INDEXER_URL = (import.meta.env.VITE_INDEXER_URL ?? "http://localhost:4000") as string;
 
+/// Mapbox GL JS public access token — required to render the map (Mapbox Standard style with
+/// built-in 3D buildings/terrain). Create a free account at https://account.mapbox.com/.
+export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string;
+
 export const SESSION_TYPE = {
   Claim: 0,
   Reinforce: 1,

@@ -214,11 +214,37 @@ select {
   font-size: 0.9rem;
 }
 
-/* Leaflet's default zoom control sits top-left, which on phones collides with content near the
-   safe area / notch — nudge it down a bit for comfortable thumb reach isn't needed, but give it
-   breathing room from the very edge. */
-.leaflet-top.leaflet-left {
-  top: max(0.5rem, env(safe-area-inset-top));
+.map-container .mapboxgl-map {
+  height: 100%;
+  width: 100%;
+}
+
+/* Mapbox's navigation control sits top-left, which on phones collides with the safe area /
+   notch — give it breathing room from the very edge (equivalent to what Leaflet's zoom control
+   needed before the Mapbox migration). */
+.mapboxgl-ctrl-top-left {
+  top: max(0.5rem, env(safe-area-inset-top)) !important;
+}
+
+/* Walking avatar marker (SVG person glyph) — drop shadow to stay legible over any basemap
+   color/3D building underneath it. */
+.player-avatar {
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.4));
+  pointer-events: none;
+}
+
+/* Small always-visible Base id label instead of Leaflet's hover-only tooltip — Mapbox GL
+   Popups default to a bulkier card; this trims it down to a compact pill. */
+.base-label-popup .mapboxgl-popup-content {
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.base-label-popup .mapboxgl-popup-tip {
+  display: none;
 }
 
 /* ---------------------------------------------------------------------
