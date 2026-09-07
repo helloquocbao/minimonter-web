@@ -108,6 +108,11 @@ select {
   inset: 0;
 }
 
+.map-container .leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
 /* Bottom sheet — the primary control surface on phones/tablets. Sits above the map, scrolls
    internally if content overflows, and always leaves the map visible above it. */
 .side-panels {
