@@ -186,6 +186,78 @@ select {
   padding-bottom: 0.5rem;
 }
 
+/* Duel FAB — stacked below the Zone FAB (same top-right column). Rose/red accent to read as
+   "PvP" distinct from the amber zone icon and neutral settings gear; solid red + pulse while
+   the player has at least one Active duel running, echoing the session FAB's recording cue. */
+.duel-fab {
+  position: absolute;
+  right: max(1rem, env(safe-area-inset-right));
+  top: calc(max(1rem, env(safe-area-inset-top)) + 108px);
+  z-index: 20;
+  width: 44px;
+  height: 44px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid var(--hud-panel-border);
+  color: #be123c;
+  clip-path: none;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.16);
+}
+
+.duel-fab.is-active {
+  color: #ffffff;
+  border-color: #be123c;
+  background: #be123c;
+}
+
+.duel-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-bottom: 0.5rem;
+}
+
+.duel-panel input {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  min-height: 40px;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--hud-panel-border);
+  background: #ffffff;
+  color: #1a2338;
+  font-size: 0.95rem;
+}
+
+.duel-list {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hud-panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.duel-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.duel-list-item button {
+  padding: 0.4rem 0.7rem;
+  min-height: 32px;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
 .zone-panel input {
   width: 100%;
   padding: 0.6rem 0.7rem;

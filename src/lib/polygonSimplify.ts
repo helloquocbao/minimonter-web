@@ -8,8 +8,11 @@ export const LOOP_CLOSURE_TOLERANCE_METERS = 20;
 /** On-chain polygon vertex cap (mirrors TerraSession.MAX_POLYGON_POINTS) — a raw GPS path can
  *  easily have hundreds of points, so it must be simplified down to at most this many before
  *  submitting, to keep gas (Shoelace area, point-in-polygon, polygon-polygon intersection all
- *  scale with vertex count) bounded on the Creditcoin side. */
-export const MAX_POLYGON_POINTS = 16;
+ *  scale with vertex count) bounded on the Creditcoin side. 32 is what a measured Claim can
+ *  afford comfortably (~678k gas with several neighbouring chunks — see
+ *  contracts/scripts/measure-polygon-gas.ts) and is enough detail for a walked loop to actually
+ *  trace the street it followed instead of getting flattened into a coarse blob. */
+export const MAX_POLYGON_POINTS = 32;
 export const MIN_POLYGON_POINTS = 3;
 
 export function isLoopClosed(path: LatLng[]): boolean {

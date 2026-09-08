@@ -153,3 +153,48 @@ export function useZones() {
 
   return { zones, loading, refresh };
 }
+
+export type DuelStatus = "Pending" | "Active" | "Settled" | "Cancelled";
+
+export interface DuelInfo {
+  id: number;
+  challenger: string;
+  opponent: string;
+  stake: string; // wei, per side (as a string — BigInt from the indexer)
+  durationSeconds: number;
+  challengedAt: number;
+  startedAt: number; // 0 while Pending
+  endsAt: number; // 0 while Pending
+  status: DuelStatus;
+  winner: string | null;
+  challengerMetersWalked: number | null;
+  opponentMetersWalked: number | null;
+}
+
+/// Duels — simple, opt-in PvP: two players wager CTC on who walks further within a time
+/// window. Read the same way as everything else here: replayed by the indexer from
+/// DuelChallenged/DuelAccepted/DuelCancelled/DuelSettled events, never computed client-side.
+export function useDuels(address: string | null) {
+  const [duels, setDuels] = useState<DuelInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    if (!address) {
+      setDuels([]);
+      setLoading(false);
+      return;
+    }
+    const response = await fetch(`${INDEXER_URL}/duels/${address}`);
+    const data: DuelInfo[] = await response.json();
+    setDuels(data);
+    setLoading(false);
+  }, [address]);
+
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [refresh]);
+
+  return { duels, loading, refresh };
+}

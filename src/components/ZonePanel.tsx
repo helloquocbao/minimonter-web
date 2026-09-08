@@ -14,12 +14,16 @@ interface ZonePanelProps {
   onCreated: () => void;
 }
 
+/** Mirrors MIN_ZONE_POOL in TerraChainGame.sol — validated client-side too so the player gets an
+ *  instant, readable error instead of paying gas for a guaranteed revert. */
+const MIN_ZONE_POOL_CTC = 200;
+
 /** Sponsored Zones let a local business pay native CTC to reward real foot traffic (any
  *  Claim/Reinforce session landing inside the zone) — the DePIN monetization layer: real-world
  *  GPS activity becomes something a business will actually pay for. */
 export function ZonePanel({ center, zones, myAddress, onCreated }: ZonePanelProps) {
   const { t } = useTranslation();
-  const [poolCtc, setPoolCtc] = useState("1");
+  const [poolCtc, setPoolCtc] = useState(String(MIN_ZONE_POOL_CTC));
   const [radiusMeters, setRadiusMeters] = useState("500");
   const [durationDays, setDurationDays] = useState("7");
   const [expectedSessions, setExpectedSessions] = useState("20");
@@ -32,6 +36,11 @@ export function ZonePanel({ center, zones, myAddress, onCreated }: ZonePanelProp
   const myZones = zones.filter((z) => myAddress && z.sponsor.toLowerCase() === myAddress.toLowerCase());
 
   async function handleCreate() {
+    if (!(Number(poolCtc) >= MIN_ZONE_POOL_CTC)) {
+      setStatus(t("zone.poolTooSmall", { min: MIN_ZONE_POOL_CTC }));
+      setStatusIsError(true);
+      return;
+    }
     setSubmitting(true);
     setStatusIsError(false);
     setStatus(t("zone.creating"));
@@ -82,11 +91,24 @@ export function ZonePanel({ center, zones, myAddress, onCreated }: ZonePanelProp
     <div className="zone-panel">
       <p className="hint">{t("zone.hint")}</p>
 
-      <label className="field-label">{t("zone.poolLabel")}</label>
-      <input type="number" min="0" step="0.01" value={poolCtc} onChange={(e) => setPoolCtc(e.target.value)} />
+      <label className="field-label">{t("zone.poolLabel", { min: MIN_ZONE_POOL_CTC })}</label>
+      <input
+        type="number"
+        min={MIN_ZONE_POOL_CTC}
+        step="1"
+        value={poolCtc}
+        onChange={(e) => setPoolCtc(e.target.value)}
+      />
 
       <label className="field-label">{t("zone.radiusLabel")}</label>
-      <input type="number" min="1" step="1" value={radiusMeters} onChange={(e) => setRadiusMeters(e.target.value)} />
+      <input
+        type="number"
+        min="1"
+        max="2000"
+        step="1"
+        value={radiusMeters}
+        onChange={(e) => setRadiusMeters(e.target.value)}
+      />
 
       <label className="field-label">{t("zone.durationLabel")}</label>
       <input type="number" min="1" step="1" value={durationDays} onChange={(e) => setDurationDays(e.target.value)} />

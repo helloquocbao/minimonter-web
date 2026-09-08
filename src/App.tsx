@@ -7,10 +7,12 @@ import { SettingsFab } from "./components/SettingsFab";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { ZoneFab } from "./components/ZoneFab";
 import { ZonePanel } from "./components/ZonePanel";
+import { DuelFab } from "./components/DuelFab";
+import { DuelPanel } from "./components/DuelPanel";
 import { Joystick } from "./components/Joystick";
 import { Modal } from "./components/Modal";
 import { useSessionRecorder } from "./hooks/useSessionRecorder";
-import { useBases, usePlayerState, useZones } from "./hooks/useGameState";
+import { useBases, usePlayerState, useZones, useDuels } from "./hooks/useGameState";
 import { useJoystickMovement } from "./lib/joystickMovement";
 import { connectWallet } from "./lib/web3";
 import type { LatLng } from "./lib/geo";
@@ -24,10 +26,12 @@ export default function App() {
   const [sessionModalOpen, setSessionModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [zoneModalOpen, setZoneModalOpen] = useState(false);
+  const [duelModalOpen, setDuelModalOpen] = useState(false);
 
   const recorder = useSessionRecorder();
   const { bases, refresh: refreshBases } = useBases();
   const { zones, refresh: refreshZones } = useZones();
+  const { duels, refresh: refreshDuels } = useDuels(address);
   const { loopCapMeters, refresh: refreshPlayer } = usePlayerState(address);
 
   useEffect(() => {
@@ -63,7 +67,10 @@ export default function App() {
     refreshBases();
     refreshPlayer();
     refreshZones();
+    refreshDuels();
   }
+
+  const hasActiveDuel = duels.some((d) => d.status === "Active");
 
   return (
     <div className="app-layout">
@@ -80,6 +87,7 @@ export default function App() {
 
         <SettingsFab isConnected={!!address} onClick={() => setSettingsModalOpen(true)} />
         <ZoneFab onClick={() => setZoneModalOpen(true)} />
+        <DuelFab hasActiveDuel={hasActiveDuel} onClick={() => setDuelModalOpen(true)} />
         <SessionFab isRecording={recorder.isRecording} onClick={() => setSessionModalOpen(true)} />
 
         {/* Dev/local-only: lets you simulate walking without physically moving, for testing
@@ -101,6 +109,12 @@ export default function App() {
         {zoneModalOpen && (
           <Modal title={t("zone.title")} onClose={() => setZoneModalOpen(false)}>
             <ZonePanel center={center} zones={zones} myAddress={address} onCreated={handleRefreshAll} />
+          </Modal>
+        )}
+
+        {duelModalOpen && (
+          <Modal title={t("duel.title")} onClose={() => setDuelModalOpen(false)}>
+            <DuelPanel duels={duels} myAddress={address} onChanged={handleRefreshAll} />
           </Modal>
         )}
 

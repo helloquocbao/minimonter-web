@@ -5,6 +5,18 @@ import { haversineMeters, type LatLng } from "../lib/geo";
  *  distance. */
 const MIN_STEP_METERS = 3;
 
+/** Discard GPS fixes the device itself reports as this imprecise (in metres). A low-confidence
+ *  fix is the main cause of a walked loop coming out as a jagged, zig-zagging mess that doesn't
+ *  follow the street: the phone briefly "teleports" sideways by tens of metres, and those bogus
+ *  points survive simplification because they look like genuine sharp turns. Consumer GPS is
+ *  usually 5-10m outdoors, so 25m is a generous cut-off that only rejects clearly bad data. */
+const MAX_ACCEPTABLE_ACCURACY_METERS = 25;
+
+/** Upper bound on plausible walking/jogging speed between two consecutive fixes. Anything faster
+ *  is a GPS glitch rather than movement, and dropping it prevents a single spike from distorting
+ *  the shape (and inflating the distance the contract is asked to trust). */
+const MAX_PLAUSIBLE_SPEED_METERS_PER_SECOND = 8;
+
 export interface RecordedSession {
   path: LatLng[];
   distanceMeters: number;
@@ -19,6 +31,9 @@ export function useSessionRecorder() {
   const watchIdRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const isRecordingRef = useRef(false);
+  /** Timestamp of the last accepted fix, used for the speed-plausibility filter. */
+  const lastFixAtRef = useRef<number>(0);
+  const lastFixRef = useRef<LatLng | null>(null);
 
   /** Shared by both the real GPS watcher and the virtual joystick — appends a point to the
    *  path and accumulates distance, ignoring sub-MIN_STEP_METERS jitter either way. */
@@ -38,6 +53,8 @@ export function useSessionRecorder() {
     setPath([]);
     setDistanceMeters(0);
     startTimeRef.current = Date.now();
+    lastFixAtRef.current = 0;
+    lastFixRef.current = null;
     isRecordingRef.current = true;
     setIsRecording(true);
 
@@ -49,7 +66,26 @@ export function useSessionRecorder() {
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
-        pushPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
+        const { latitude, longitude, accuracy } = position.coords;
+        const next: LatLng = { lat: latitude, lng: longitude };
+
+        // Drop fixes the device flags as low-confidence — these are what turn a smooth walk
+        // into a spiky polygon that ignores the road it followed.
+        if (typeof accuracy === "number" && accuracy > MAX_ACCEPTABLE_ACCURACY_METERS) return;
+
+        // Drop physically impossible jumps between consecutive fixes (tunnel exits, urban
+        // canyon reflections) for the same reason.
+        const now = position.timestamp ?? Date.now();
+        const previous = lastFixRef.current;
+        if (previous && lastFixAtRef.current) {
+          const seconds = Math.max(0.001, (now - lastFixAtRef.current) / 1000);
+          const speed = haversineMeters(previous, next) / seconds;
+          if (speed > MAX_PLAUSIBLE_SPEED_METERS_PER_SECOND) return;
+        }
+
+        lastFixRef.current = next;
+        lastFixAtRef.current = now;
+        pushPosition(next);
       },
       (error) => console.error("Geolocation error:", error.message),
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }

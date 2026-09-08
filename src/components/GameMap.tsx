@@ -93,7 +93,7 @@ export function GameMap({ center, bases, zones, currentPath, myAddress }: GameMa
           properties: {
             id: base.id,
             color: colorForOwner(base.owner, myAddress),
-            opacity: healthPct < 50 ? 0.15 : 0.25,
+            opacity: healthPct < 50 ? 0.2 : 0.32,
             tooltip: t("map.baseTooltip", {
               id: base.id,
               owner: `${base.owner.slice(0, 6)}...${base.owner.slice(-4)}`,
@@ -214,9 +214,14 @@ export function GameMap({ center, bases, zones, currentPath, myAddress }: GameMa
             <Layer
               id="base-outline"
               type="line"
+              // Rounded joins/caps keep a walked loop's corners looking like a traced route
+              // rather than a hard-edged polygon, which is most of what makes territory read as
+              // "drawn along the street" instead of "a shape stamped on the map".
+              layout={{ "line-join": "round", "line-cap": "round" }}
               paint={{
                 "line-color": ["get", "color"],
-                "line-width": 2,
+                "line-width": 3,
+                "line-opacity": 0.95,
               }}
             />
           </Source>
@@ -247,6 +252,9 @@ export function GameMap({ center, bases, zones, currentPath, myAddress }: GameMa
             <Layer
               id="walk-path-line"
               type="line"
+              // Same rounding as the territory outline so the live trail being recorded looks
+              // like the shape it's about to become.
+              layout={{ "line-join": "round", "line-cap": "round" }}
               paint={{
                 "line-color": "#3b82f6",
                 "line-width": 4,
