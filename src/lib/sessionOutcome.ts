@@ -40,8 +40,12 @@ export async function pollSessionOutcome(
     onTick?.(Date.now() - startedAt);
 
     if (mode === "Claim") {
-      const [claimed, rejected] = await Promise.all([
+      // A Claim either plants a brand-new Base (BaseClaimed) or, if the loop touched one of
+      // the player's own Bases, extends it instead (BaseExtended) — both are "success",
+      // just reported with different event/field names on-chain.
+      const [claimed, extended, rejected] = await Promise.all([
         game.queryFilter(game.filters.BaseClaimed(undefined, player, sessionId), fromBlock),
+        game.queryFilter(game.filters.BaseExtended(undefined, player, sessionId), fromBlock),
         game.queryFilter(game.filters.ClaimRejected(player, sessionId), fromBlock),
       ]);
       if (claimed.length > 0) {
@@ -49,6 +53,16 @@ export async function pollSessionOutcome(
         return {
           success: true,
           message: t("outcome.claimSuccess", { baseId: e.args.baseId.toString(), area: e.args.areaMeters.toString() }),
+        };
+      }
+      if (extended.length > 0) {
+        const e = extended[0] as EventLog;
+        return {
+          success: true,
+          message: t("outcome.claimExtended", {
+            baseId: e.args.baseId.toString(),
+            area: e.args.newTotalAreaMeters.toString(),
+          }),
         };
       }
       if (rejected.length > 0) {

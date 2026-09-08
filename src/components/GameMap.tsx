@@ -1,15 +1,17 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Map, { Source, Layer, Marker, Popup, NavigationControl, type MapRef, type MapEvent } from "react-map-gl";
+import { formatEther } from "ethers";
 import type { FeatureCollection, Point } from "geojson";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MAPBOX_TOKEN } from "../config";
 import type { LatLng } from "../lib/geo";
-import type { BaseInfo } from "../hooks/useGameState";
+import type { BaseInfo, ZoneInfo } from "../hooks/useGameState";
 
 interface GameMapProps {
   center: LatLng;
   bases: BaseInfo[];
+  zones: ZoneInfo[];
   currentPath: LatLng[];
   myAddress: string | null;
 }
@@ -36,11 +38,25 @@ function bearingDegrees(a: LatLng, b: LatLng): number {
   return (toDeg(Math.atan2(y, x)) + 360) % 360;
 }
 
-/** Builds a circular polygon (in GeoJSON, WGS84) approximating a Base's territory — same flat-
- *  earth approximation the contract itself uses (see METERS_PER_DEGREE in TerraChainGame.sol),
- *  so the drawn shape matches what's actually claimed on-chain. Rendering real polygons (instead
- *  of Mapbox's pixel-based circle-radius paint property) keeps the circle's real-world size
- *  correct across zoom levels and latitudes. */
+/** Centroid of a Base's overall territory — averages each chunk's own centroid (not a true
+ *  area-weighted centroid, but good enough to place the Base's id label/tooltip somewhere
+ *  reasonably central across its chunks). */
+function baseLabelPosition(base: BaseInfo): LatLng {
+  const centroids = base.chunks.map((chunk) => {
+    const sum = chunk.points.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), {
+      lat: 0,
+      lng: 0,
+    });
+    return { lat: sum.lat / chunk.points.length, lng: sum.lng / chunk.points.length };
+  });
+  const sum = centroids.reduce((acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }), { lat: 0, lng: 0 });
+  return { lat: sum.lat / centroids.length, lng: sum.lng / centroids.length };
+}
+
+/** Builds a circular polygon (in GeoJSON, WGS84) for a Sponsored Zone's boundary — zones are
+ *  always genuinely circular (radiusMeters around a center), unlike Bases which use real walked
+ *  polygons, so this approximation is exact for them. Same flat-earth approximation the
+ *  contract itself uses for zone containment checks. */
 function circlePolygon(center: LatLng, radiusMeters: number, points = 48): number[][] {
   const metersPerDegreeLat = 111_320;
   const metersPerDegreeLng = 111_320 * Math.cos((center.lat * Math.PI) / 180);
@@ -54,24 +70,25 @@ function circlePolygon(center: LatLng, radiusMeters: number, points = 48): numbe
   return coords;
 }
 
-export function GameMap({ center, bases, currentPath, myAddress }: GameMapProps) {
+export function GameMap({ center, bases, zones, currentPath, myAddress }: GameMapProps) {
   const { t } = useTranslation();
   const mapRef = useRef<MapRef | null>(null);
+  // Mapbox Standard (v3) takes noticeably longer to finish loading its style than classic
+  // styles — addSource/addLayer calls issued before that finishes throw "Style is not done
+  // loading". Gate all Source/Layer/Marker rendering behind this instead of firing eagerly.
+  const [styleLoaded, setStyleLoaded] = useState(false);
 
   const baseFillCollection = useMemo(() => {
     return {
       type: "FeatureCollection",
-      features: bases.map((base) => {
-        const healthPct = base.initialAreaMeters > 0
-          ? Math.round((base.currentAreaMeters / base.initialAreaMeters) * 100)
-          : 100;
-        // Shrink the drawn radius to reflect damaged territory: area scales with r^2, so the
-        // displayed radius scales with sqrt(currentArea / initialArea).
-        const displayRadius = base.initialAreaMeters > 0
-          ? base.radiusMeters * Math.sqrt(base.currentAreaMeters / base.initialAreaMeters)
-          : base.radiusMeters;
+      // Each chunk is its own GeoJSON feature (drawing a Base's real walked shape(s) instead
+      // of a circle approximation) — a Base extended over multiple Claims just ends up as
+      // several adjacent/overlapping polygons sharing the same color and tooltip.
+      features: bases.flatMap((base) => {
+        const healthPct =
+          base.initialAreaMeters > 0 ? Math.round((base.currentAreaMeters / base.initialAreaMeters) * 100) : 100;
 
-        return {
+        return base.chunks.map((chunk) => ({
           type: "Feature" as const,
           properties: {
             id: base.id,
@@ -87,12 +104,40 @@ export function GameMap({ center, bases, currentPath, myAddress }: GameMapProps)
           },
           geometry: {
             type: "Polygon" as const,
-            coordinates: [circlePolygon(base, Math.max(displayRadius, 5))],
+            // GeoJSON polygons must be explicitly closed (last point == first) and are
+            // (lng, lat) ordered.
+            coordinates: [[...chunk.points.map((p) => [p.lng, p.lat]), [chunk.points[0].lng, chunk.points[0].lat]]],
           },
-        };
+        }));
       }),
     };
   }, [bases, myAddress, t]);
+
+  const zoneCollection = useMemo(() => {
+    const now = Date.now() / 1000;
+    return {
+      type: "FeatureCollection",
+      features: zones
+        .filter((z) => !z.withdrawn && z.endsAt > now)
+        .map((zone) => ({
+          type: "Feature" as const,
+          properties: {
+            id: zone.id,
+            tooltip: t("map.zoneTooltip", {
+              id: zone.id,
+              remaining: formatEther(zone.remainingPool),
+              total: formatEther(zone.totalPool),
+              paid: zone.sessionsPaid,
+              expected: zone.expectedSessions,
+            }),
+          },
+          geometry: {
+            type: "Polygon" as const,
+            coordinates: [circlePolygon(zone, zone.radiusMeters)],
+          },
+        })),
+    };
+  }, [zones, t]);
 
   const pathCollection = useMemo(() => {
     return {
@@ -150,70 +195,122 @@ export function GameMap({ center, bases, currentPath, myAddress }: GameMapProps)
         const map = e.target;
         map.setConfigProperty("basemap", "lightPreset", "day");
         map.setConfigProperty("basemap", "show3dObjects", true);
+        setStyleLoaded(true);
       }}
     >
       <NavigationControl position="top-left" />
 
-      <Source id="base-territories" type="geojson" data={baseFillCollection as FeatureCollection}>
-        <Layer
-          id="base-fill"
-          type="fill"
-          paint={{
-            "fill-color": ["get", "color"],
-            "fill-opacity": ["get", "opacity"],
-          }}
-        />
-        <Layer
-          id="base-outline"
-          type="line"
-          paint={{
-            "line-color": ["get", "color"],
-            "line-width": 2,
-          }}
-        />
-      </Source>
-
-      <Source id="walk-path" type="geojson" data={pathCollection as FeatureCollection}>
-        <Layer
-          id="walk-path-line"
-          type="line"
-          paint={{
-            "line-color": "#3b82f6",
-            "line-width": 4,
-          }}
-        />
-      </Source>
-
-      {bases.map((base) => (
-        <Popup
-          key={base.id}
-          longitude={base.lng}
-          latitude={base.lat}
-          closeButton={false}
-          closeOnClick={false}
-          anchor="bottom"
-          offset={12}
-          className="base-label-popup"
-        >
-          #{base.id}
-        </Popup>
-      ))}
-
-      {/* Avatar: a simple person glyph, always rendered at the player's current/last known
-          position, rotated to face the direction of the most recent GPS step. Kept as a 2D
-          HTML marker (cheap, crisp at any zoom) rather than a 3D glTF model — plenty legible
-          against the Standard style's 3D buildings underneath it. */}
-      <Marker longitude={center.lng} latitude={center.lat} rotation={heading} rotationAlignment="map">
-        <div className="player-avatar" aria-label="You">
-          <svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="17" cy="17" r="16" fill="#2563eb" stroke="white" strokeWidth="2" />
-            <path
-              d="M17 8a3.2 3.2 0 1 1 0 6.4A3.2 3.2 0 0 1 17 8Zm0 8c-3.6 0-6.5 2.1-6.5 4.7v1.1c0 .6.5 1.2 1.2 1.2h10.6c.7 0 1.2-.6 1.2-1.2v-1.1c0-2.6-2.9-4.7-6.5-4.7Z"
-              fill="white"
+      {styleLoaded && (
+        <>
+          <Source id="base-territories" type="geojson" data={baseFillCollection as FeatureCollection}>
+            <Layer
+              id="base-fill"
+              type="fill"
+              paint={{
+                "fill-color": ["get", "color"],
+                "fill-opacity": ["get", "opacity"],
+              }}
             />
-          </svg>
-        </div>
-      </Marker>
+            <Layer
+              id="base-outline"
+              type="line"
+              paint={{
+                "line-color": ["get", "color"],
+                "line-width": 2,
+              }}
+            />
+          </Source>
+
+          {/* Sponsored Zones — dashed gold circles distinct from Base fills, so a business's
+              paid-for area reads as a separate overlay layer rather than territory itself. */}
+          <Source id="sponsored-zones" type="geojson" data={zoneCollection as FeatureCollection}>
+            <Layer
+              id="zone-fill"
+              type="fill"
+              paint={{
+                "fill-color": "#f59e0b",
+                "fill-opacity": 0.08,
+              }}
+            />
+            <Layer
+              id="zone-outline"
+              type="line"
+              paint={{
+                "line-color": "#f59e0b",
+                "line-width": 2,
+                "line-dasharray": [2, 2],
+              }}
+            />
+          </Source>
+
+          <Source id="walk-path" type="geojson" data={pathCollection as FeatureCollection}>
+            <Layer
+              id="walk-path-line"
+              type="line"
+              paint={{
+                "line-color": "#3b82f6",
+                "line-width": 4,
+              }}
+            />
+          </Source>
+
+          {bases.map((base) => {
+            const labelPos = baseLabelPosition(base);
+            return (
+              <Popup
+                key={base.id}
+                longitude={labelPos.lng}
+                latitude={labelPos.lat}
+                closeButton={false}
+                closeOnClick={false}
+                anchor="bottom"
+                offset={12}
+                className="base-label-popup"
+              >
+                #{base.id}
+              </Popup>
+            );
+          })}
+
+          {zones
+            .filter((z) => !z.withdrawn && z.endsAt > Date.now() / 1000)
+            .map((zone) => (
+              <Popup
+                key={`zone-${zone.id}`}
+                longitude={zone.lng}
+                latitude={zone.lat}
+                closeButton={false}
+                closeOnClick={false}
+                anchor="bottom"
+                offset={12}
+                className="zone-label-popup"
+              >
+                {t("map.zoneLabel", { id: zone.id })}
+              </Popup>
+            ))}
+
+          {/* Avatar: a directional "radar beacon" — pulsing ring under a heading arrow, matching
+              the cyan HUD theme, rotated to face the direction of the most recent GPS step. Reads
+              more like a tactical-map player marker than a literal person glyph. Kept as a 2D
+              HTML marker (cheap, crisp at any zoom) rather than a 3D glTF model — plenty legible
+              against the Standard style's 3D buildings underneath it. */}
+          <Marker longitude={center.lng} latitude={center.lat} rotation={heading} rotationAlignment="map">
+            <div className="player-avatar" aria-label="You">
+              <span className="player-avatar-pulse" />
+              <svg width="34" height="34" viewBox="0 0 34 34" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="17" cy="17" r="15" fill="rgba(6,14,24,0.85)" stroke="#34e0ff" strokeWidth="2" />
+                <path
+                  d="M17 6.5 L23.5 21 L17 17.8 L10.5 21 Z"
+                  fill="#34e0ff"
+                  stroke="#eafaff"
+                  strokeWidth="0.75"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+          </Marker>
+        </>
+      )}
     </Map>
   );
 }

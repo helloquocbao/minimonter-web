@@ -16,15 +16,15 @@
       },
       {
         "indexed": false,
-        "internalType": "int32",
-        "name": "lat",
-        "type": "int32"
+        "internalType": "int32[]",
+        "name": "lats",
+        "type": "int32[]"
       },
       {
         "indexed": false,
-        "internalType": "int32",
-        "name": "lng",
-        "type": "int32"
+        "internalType": "int32[]",
+        "name": "lngs",
+        "type": "int32[]"
       },
       {
         "indexed": false,
@@ -50,6 +50,32 @@
   },
   {
     "inputs": [],
+    "name": "MAX_POLYGON_POINTS",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MIN_POLYGON_POINTS",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "nextSessionId",
     "outputs": [
       {
@@ -69,14 +95,14 @@
         "type": "uint8"
       },
       {
-        "internalType": "int32",
-        "name": "lat",
-        "type": "int32"
+        "internalType": "int32[]",
+        "name": "lats",
+        "type": "int32[]"
       },
       {
-        "internalType": "int32",
-        "name": "lng",
-        "type": "int32"
+        "internalType": "int32[]",
+        "name": "lngs",
+        "type": "int32[]"
       },
       {
         "internalType": "uint32",

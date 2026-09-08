@@ -8,6 +8,17 @@
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "commitBlock",
+        "type": "uint256"
+      }
+    ],
+    "name": "BotAttackCommitPending",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "sessionsSinceLastAttack",
         "type": "uint256"
       },
@@ -32,8 +43,56 @@
     "type": "error"
   },
   {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "InvalidZoneParameters",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NoBotAttackCommitPending",
+    "type": "error"
+  },
+  {
     "inputs": [],
     "name": "NotOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotZoneSponsor",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "revealableAtBlock",
+        "type": "uint256"
+      }
+    ],
+    "name": "RevealTooEarly",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZoneAlreadyWithdrawn",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "endsAt",
+        "type": "uint256"
+      }
+    ],
+    "name": "ZoneStillActive",
     "type": "error"
   },
   {
@@ -59,21 +118,9 @@
       },
       {
         "indexed": false,
-        "internalType": "int32",
-        "name": "lat",
-        "type": "int32"
-      },
-      {
-        "indexed": false,
-        "internalType": "int32",
-        "name": "lng",
-        "type": "int32"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint32",
-        "name": "radiusMeters",
-        "type": "uint32"
+        "internalType": "uint256",
+        "name": "chunkId",
+        "type": "uint256"
       },
       {
         "indexed": false,
@@ -145,12 +192,87 @@
       },
       {
         "indexed": false,
+        "internalType": "uint256",
+        "name": "chunkId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "addedAreaMeters",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "newTotalAreaMeters",
+        "type": "uint32"
+      }
+    ],
+    "name": "BaseExtended",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "baseId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "sessionId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
         "internalType": "uint32",
         "name": "restoredAreaMeters",
         "type": "uint32"
       }
     ],
     "name": "BaseReinforced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "commitBlock",
+        "type": "uint256"
+      }
+    ],
+    "name": "BotAttackCommitExpired",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "commitBlock",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "sessionCountAtCommit",
+        "type": "uint256"
+      }
+    ],
+    "name": "BotAttackCommitted",
     "type": "event"
   },
   {
@@ -222,6 +344,19 @@
       {
         "indexed": true,
         "internalType": "address",
+        "name": "newFeeRecipient",
+        "type": "address"
+      }
+    ],
+    "name": "FeeRecipientUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
         "name": "player",
         "type": "address"
       },
@@ -280,6 +415,154 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "zoneId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "int32",
+        "name": "lat",
+        "type": "int32"
+      },
+      {
+        "indexed": false,
+        "internalType": "int32",
+        "name": "lng",
+        "type": "int32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "radiusMeters",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "totalPool",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "expectedSessions",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "endsAt",
+        "type": "uint256"
+      }
+    ],
+    "name": "SponsoredZoneCreated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "zoneId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "sessionId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountToPlayer",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "platformFee",
+        "type": "uint256"
+      }
+    ],
+    "name": "SponsoredZonePayout",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "zoneId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "player",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "payoutNumber",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "decayBps",
+        "type": "uint256"
+      }
+    ],
+    "name": "SponsoredZonePayoutDecayed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "zoneId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amountReturned",
+        "type": "uint256"
+      }
+    ],
+    "name": "SponsoredZoneWithdrawn",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "ACTION_PROCESS_SESSION",
     "outputs": [
@@ -287,19 +570,6 @@
         "internalType": "uint8",
         "name": "",
         "type": "uint8"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "AREA_SCALE",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -359,12 +629,12 @@
   },
   {
     "inputs": [],
-    "name": "CELL_SIZE_MICRO_DEGREES",
+    "name": "BPS_DENOMINATOR",
     "outputs": [
       {
-        "internalType": "int32",
+        "internalType": "uint256",
         "name": "",
-        "type": "int32"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -372,12 +642,12 @@
   },
   {
     "inputs": [],
-    "name": "CIRCUMFERENCE_TO_RADIUS_SCALED",
+    "name": "CELL_SIZE_MICRO_DEGREES",
     "outputs": [
       {
-        "internalType": "uint32",
+        "internalType": "int32",
         "name": "",
-        "type": "uint32"
+        "type": "int32"
       }
     ],
     "stateMutability": "view",
@@ -424,7 +694,59 @@
   },
   {
     "inputs": [],
+    "name": "MAX_POLYGON_POINTS",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "MAX_SPEED_METERS_PER_SECOND",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_ZONE_DURATION_DAYS",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_ZONE_EXPECTED_SESSIONS",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_ZONE_RADIUS_METERS",
     "outputs": [
       {
         "internalType": "uint32",
@@ -476,6 +798,71 @@
   },
   {
     "inputs": [],
+    "name": "MIN_POLYGON_POINTS",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MIN_ZONE_DURATION_DAYS",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MIN_ZONE_EXPECTED_SESSIONS",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "PLATFORM_FEE_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "REVEAL_WINDOW_BLOCKS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "SESSION_CLAIM",
     "outputs": [
       {
@@ -515,12 +902,64 @@
   },
   {
     "inputs": [],
+    "name": "SYBIL_COOLDOWN_SECONDS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "SYBIL_DECAY_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "SYBIL_MIN_PAYOUT_BPS",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "VERIFIER",
     "outputs": [
       {
         "internalType": "contract INativeQueryVerifier",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "allZoneIds",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
       }
     ],
     "stateMutability": "view",
@@ -540,21 +979,6 @@
         "internalType": "address",
         "name": "owner",
         "type": "address"
-      },
-      {
-        "internalType": "int32",
-        "name": "lat",
-        "type": "int32"
-      },
-      {
-        "internalType": "int32",
-        "name": "lng",
-        "type": "int32"
-      },
-      {
-        "internalType": "uint32",
-        "name": "radiusMeters",
-        "type": "uint32"
       },
       {
         "internalType": "uint32",
@@ -577,9 +1001,28 @@
   },
   {
     "inputs": [],
-    "name": "botAttack",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "name": "botAttackCommitBlock",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "botAttackCommitSessionCount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -606,6 +1049,152 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "botAttackRevealReady",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "baseId",
+        "type": "uint256"
+      }
+    ],
+    "name": "chunkIdsOfBase",
+    "outputs": [
+      {
+        "internalType": "uint256[]",
+        "name": "",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "chunkId",
+        "type": "uint256"
+      }
+    ],
+    "name": "chunkPolygon",
+    "outputs": [
+      {
+        "internalType": "int32[]",
+        "name": "lats",
+        "type": "int32[]"
+      },
+      {
+        "internalType": "int32[]",
+        "name": "lngs",
+        "type": "int32[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "chunks",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "baseId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint32",
+        "name": "areaMeters",
+        "type": "uint32"
+      },
+      {
+        "internalType": "int32",
+        "name": "minLat",
+        "type": "int32"
+      },
+      {
+        "internalType": "int32",
+        "name": "maxLat",
+        "type": "int32"
+      },
+      {
+        "internalType": "int32",
+        "name": "minLng",
+        "type": "int32"
+      },
+      {
+        "internalType": "int32",
+        "name": "maxLng",
+        "type": "int32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "commitBotAttack",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "int32",
+        "name": "lat",
+        "type": "int32"
+      },
+      {
+        "internalType": "int32",
+        "name": "lng",
+        "type": "int32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "radiusMeters",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "durationDays",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "expectedSessions",
+        "type": "uint32"
+      }
+    ],
+    "name": "createSponsoredZone",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "zoneId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -695,6 +1284,38 @@
   },
   {
     "inputs": [],
+    "name": "feeRecipient",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "zoneId",
+        "type": "uint256"
+      }
+    ],
+    "name": "isZoneActive",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "lastBotAttackAtSessionCount",
     "outputs": [
       {
@@ -728,6 +1349,32 @@
   {
     "inputs": [],
     "name": "nextBaseId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "nextChunkId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "nextZoneId",
     "outputs": [
       {
         "internalType": "uint256",
@@ -823,12 +1470,96 @@
   },
   {
     "inputs": [],
+    "name": "revealBotAttack",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_feeRecipient",
+        "type": "address"
+      }
+    ],
+    "name": "setFeeRecipient",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "sourceSessionContract",
     "outputs": [
       {
         "internalType": "address",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "sponsoredZones",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "sponsor",
+        "type": "address"
+      },
+      {
+        "internalType": "int32",
+        "name": "lat",
+        "type": "int32"
+      },
+      {
+        "internalType": "int32",
+        "name": "lng",
+        "type": "int32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "radiusMeters",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "rewardPerSession",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "remainingPool",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint32",
+        "name": "sessionsPaid",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "expectedSessions",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint256",
+        "name": "endsAt",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "withdrawn",
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -842,6 +1573,67 @@
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "zoneId",
+        "type": "uint256"
+      }
+    ],
+    "name": "withdrawUnusedPool",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "zoneLastPayoutAtOf",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "zonePayoutCountOf",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
       }
     ],
     "stateMutability": "view",

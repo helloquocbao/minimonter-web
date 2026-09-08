@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { WalletBar } from "./components/WalletBar";
 import { GameMap } from "./components/GameMap";
 import { SessionPanel } from "./components/SessionPanel";
+import { SessionFab } from "./components/SessionFab";
+import { SettingsFab } from "./components/SettingsFab";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { ZoneFab } from "./components/ZoneFab";
+import { ZonePanel } from "./components/ZonePanel";
+import { Joystick } from "./components/Joystick";
+import { Modal } from "./components/Modal";
 import { useSessionRecorder } from "./hooks/useSessionRecorder";
-import { useBases, usePlayerState } from "./hooks/useGameState";
+import { useBases, usePlayerState, useZones } from "./hooks/useGameState";
+import { useJoystickMovement } from "./lib/joystickMovement";
 import { connectWallet } from "./lib/web3";
 import type { LatLng } from "./lib/geo";
 
@@ -14,10 +21,14 @@ export default function App() {
   const { t } = useTranslation();
   const [address, setAddress] = useState<string | null>(null);
   const [center, setCenter] = useState<LatLng>(DEFAULT_CENTER);
+  const [sessionModalOpen, setSessionModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [zoneModalOpen, setZoneModalOpen] = useState(false);
 
   const recorder = useSessionRecorder();
   const { bases, refresh: refreshBases } = useBases();
-  const { cumulativeMeters, loopCapMeters, refresh: refreshPlayer } = usePlayerState(address);
+  const { zones, refresh: refreshZones } = useZones();
+  const { loopCapMeters, refresh: refreshPlayer } = usePlayerState(address);
 
   useEffect(() => {
     if (!("geolocation" in navigator)) return;
@@ -31,6 +42,18 @@ export default function App() {
     if (recorder.path.length > 0) setCenter(recorder.path[recorder.path.length - 1]);
   }, [recorder.path]);
 
+  // Virtual joystick: drives `center` continuously while held, and — while a session is
+  // actively recording — also feeds each simulated step into the recorder exactly like a real
+  // GPS fix would, so the player can walk a loop without physically moving.
+  const handleJoystickMove = useCallback(
+    (next: LatLng) => {
+      setCenter(next);
+      recorder.pushManualPosition(next);
+    },
+    [recorder]
+  );
+  const { setDirection } = useJoystickMovement(center, handleJoystickMove);
+
   async function handleConnect() {
     const account = await connectWallet();
     setAddress(account);
@@ -39,34 +62,64 @@ export default function App() {
   function handleRefreshAll() {
     refreshBases();
     refreshPlayer();
+    refreshZones();
   }
 
   return (
     <div className="app-layout">
-      <WalletBar address={address} onConnect={handleConnect} />
-
       <div className="app-body">
         <div className="map-container">
-          <GameMap center={center} bases={bases} currentPath={recorder.path} myAddress={address} />
-        </div>
-
-        <div className="side-panels">
-          <SessionPanel
-            isRecording={recorder.isRecording}
-            distanceMeters={recorder.distanceMeters}
-            pathLength={recorder.path.length}
-            loopCapMeters={loopCapMeters || 1000}
-            onStart={recorder.start}
-            onStop={recorder.stop}
-            onSubmitted={handleRefreshAll}
+          <GameMap
+            center={center}
+            bases={bases}
+            zones={zones}
+            currentPath={recorder.path}
+            myAddress={address}
           />
-
-          <div className="panel">
-            <h3>{t("progress.title")}</h3>
-            <p>{t("progress.totalDistance", { meters: cumulativeMeters })}</p>
-            <p>{t("progress.loopCap", { meters: loopCapMeters || 1000 })}</p>
-          </div>
         </div>
+
+        <SettingsFab isConnected={!!address} onClick={() => setSettingsModalOpen(true)} />
+        <ZoneFab onClick={() => setZoneModalOpen(true)} />
+        <SessionFab isRecording={recorder.isRecording} onClick={() => setSessionModalOpen(true)} />
+
+        {/* Dev/local-only: lets you simulate walking without physically moving, for testing
+            Claim/Reinforce loops at a desk. Never present in a production build — gated by
+            Vite's import.meta.env.DEV, which is statically false (and dead-code-eliminated) in
+            `npm run build`. Real gameplay always requires an actual GPS-tracked walk. */}
+        {import.meta.env.DEV && (
+          <div className="joystick-container">
+            <Joystick onChange={setDirection} />
+          </div>
+        )}
+
+        {settingsModalOpen && (
+          <Modal title={t("settings.title")} onClose={() => setSettingsModalOpen(false)}>
+            <SettingsPanel address={address} onConnect={handleConnect} />
+          </Modal>
+        )}
+
+        {zoneModalOpen && (
+          <Modal title={t("zone.title")} onClose={() => setZoneModalOpen(false)}>
+            <ZonePanel center={center} zones={zones} myAddress={address} onCreated={handleRefreshAll} />
+          </Modal>
+        )}
+
+        {sessionModalOpen && (
+          <Modal title={t("session.title")} onClose={() => setSessionModalOpen(false)}>
+            <SessionPanel
+              isRecording={recorder.isRecording}
+              distanceMeters={recorder.distanceMeters}
+              pathLength={recorder.path.length}
+              loopCapMeters={loopCapMeters || 1000}
+              bases={bases}
+              myAddress={address}
+              onStart={recorder.start}
+              onStarted={() => setSessionModalOpen(false)}
+              onStop={recorder.stop}
+              onSubmitted={handleRefreshAll}
+            />
+          </Modal>
+        )}
       </div>
     </div>
   );

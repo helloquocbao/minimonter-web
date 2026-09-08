@@ -1,22 +1,32 @@
 import { useCallback, useEffect, useState } from "react";
 import { INDEXER_URL } from "../config";
+import type { LatLng } from "../lib/geo";
+
+export interface ChunkInfo {
+  id: number;
+  /** Polygon vertices, in degrees (already converted from the indexer's micro-degrees). */
+  points: LatLng[];
+}
 
 export interface BaseInfo {
   id: number;
   owner: string;
-  lat: number;
-  lng: number;
-  radiusMeters: number;
+  chunks: ChunkInfo[];
   initialAreaMeters: number;
   currentAreaMeters: number;
+}
+
+interface IndexerChunk {
+  id: number;
+  lats: number[];
+  lngs: number[];
+  areaMeters: number;
 }
 
 interface IndexerBase {
   id: number;
   owner: string;
-  lat: number;
-  lng: number;
-  radiusMeters: number;
+  chunks: IndexerChunk[];
   initialAreaMeters: number;
   currentAreaMeters: number;
 }
@@ -39,16 +49,17 @@ export function useBases() {
     setBases(
       data
         // Bases fully destroyed by a bot attack are freed (owner == zero address) — hide them
-        // from the map instead of drawing an empty/unclaimed circle.
+        // from the map instead of drawing an empty/unclaimed shape.
         .filter((b) => b.owner !== "0x0000000000000000000000000000000000000000")
         .map((b) => ({
           id: b.id,
           owner: b.owner,
-          lat: b.lat / 1e6,
-          lng: b.lng / 1e6,
-          radiusMeters: b.radiusMeters,
           initialAreaMeters: b.initialAreaMeters,
           currentAreaMeters: b.currentAreaMeters,
+          chunks: b.chunks.map((c) => ({
+            id: c.id,
+            points: c.lats.map((lat, i) => ({ lat: lat / 1e6, lng: c.lngs[i] / 1e6 })),
+          })),
         }))
     );
     setLoading(false);
@@ -82,4 +93,63 @@ export function usePlayerState(address: string | null) {
   }, [refresh]);
 
   return { cumulativeMeters, loopCapMeters, refresh };
+}
+
+export interface ZoneInfo {
+  id: number;
+  sponsor: string;
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  totalPool: string;
+  remainingPool: string;
+  rewardPerSession: string;
+  sessionsPaid: number;
+  expectedSessions: number;
+  endsAt: number;
+  withdrawn: boolean;
+}
+
+interface IndexerZone {
+  id: number;
+  sponsor: string;
+  lat: number;
+  lng: number;
+  radiusMeters: number;
+  totalPool: string;
+  remainingPool: string;
+  rewardPerSession: string;
+  sessionsPaid: number;
+  expectedSessions: number;
+  endsAt: number;
+  withdrawn: boolean;
+}
+
+/// Sponsored Zones — local businesses pay CTC to reward real foot traffic (Claim/Reinforce
+/// sessions) inside a chosen area. Read the same way as Bases: replayed by the indexer,
+/// polled here, never computed client-side.
+export function useZones() {
+  const [zones, setZones] = useState<ZoneInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(async () => {
+    const response = await fetch(`${INDEXER_URL}/zones`);
+    const data: IndexerZone[] = await response.json();
+    setZones(
+      data.map((z) => ({
+        ...z,
+        lat: z.lat / 1e6,
+        lng: z.lng / 1e6,
+      }))
+    );
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    refresh();
+    const interval = setInterval(refresh, REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [refresh]);
+
+  return { zones, loading, refresh };
 }
