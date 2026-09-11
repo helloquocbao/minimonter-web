@@ -1,0 +1,5 @@
+# Replace with your real subdomain (must have a DNS A record pointing at this VPS's IP).
+# Caddy automatically requests + renews a Let's Encrypt certificate for it — no manual TLS setup.
+api.minimonster.xyz {
+    reverse_proxy indexer:4000
+}

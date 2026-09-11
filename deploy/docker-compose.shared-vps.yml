@@ -1,0 +1,20 @@
+# Variant for a VPS that's already running other services on ports 80/443 (e.g. an existing
+# nginx + other Docker apps) and has no domain pointed at it yet for this project. No Caddy here
+# — the indexer's port is published straight to the host instead.
+#
+# WARNING: this serves the indexer over plain HTTP. A frontend hosted on HTTPS (Vercel/Netlify)
+# will have this fetch blocked by the browser as mixed content. Fine for direct testing
+# (curl / a frontend also running over HTTP), not for real end users until a domain + nginx site
+# + certbot (or the root docker-compose.yml's Caddy, on a dedicated VPS) is added in front of it.
+services:
+  worker:
+    build: ../worker
+    restart: unless-stopped
+    env_file: ../worker/.env
+
+  indexer:
+    build: ../indexer
+    restart: unless-stopped
+    env_file: ../indexer/.env
+    ports:
+      - "4000:4000"

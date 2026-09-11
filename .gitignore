@@ -4,3 +4,20 @@ dist/
 .env.local
 .DS_Store
 *.tsbuildinfo
+
+# Hardhat
+contracts/artifacts/
+contracts/cache/
+contracts/typechain-types/
+
+# Deploy output (regenerate via the deploy scripts; addresses are testnet-only, safe either way)
+deployed-addresses.json
+
+# Relayer progress checkpoint — machine-local runtime state, not source
+.relayer-checkpoint.json
+
+# Demo seeding progress (runtime state)
+.demo-seed-state.json
+
+# Demo player wallets (private mnemonic — never commit)
+.demo-wallets.json

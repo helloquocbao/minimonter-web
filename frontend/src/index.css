@@ -1,0 +1,767 @@
+@import url("https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Chakra+Petch:wght@400;500;600;700&display=swap");
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  font-family: "Chakra Petch", system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Avoid accidental page scroll/bounce on mobile — the map and modal handle their own
+     scrolling internally. */
+  overflow: hidden;
+  background: #f4f6fb;
+  color: #1a2338;
+}
+
+button,
+select {
+  font-family: inherit;
+}
+
+/* ---------------------------------------------------------------------
+   Light theme — clean, high-contrast look: white/soft-gray surfaces,
+   blue/green accents (territory colors reused from the map), soft
+   shadows instead of neon glow. The map is the whole screen; the only
+   control surface is the session modal, opened via a floating button.
+   --------------------------------------------------------------------- */
+
+:root {
+  --hud-bg: #f4f6fb;
+  --hud-panel: #ffffff;
+  --hud-panel-border: #e1e6f0;
+  --hud-accent: #2563eb;
+  --hud-accent-strong: #1d4ed8;
+  --hud-green: #16a34a;
+  --hud-red: #dc2626;
+  --hud-amber: #d97706;
+  --hud-text-dim: #64748b;
+}
+
+.app-layout {
+  height: 100%;
+  height: 100dvh; /* accounts for mobile browser chrome (address bar) */
+  background: var(--hud-bg);
+}
+
+.lang-switcher {
+  width: auto;
+  min-height: 36px;
+  margin-bottom: 0;
+  padding: 0.3rem 0.4rem;
+  font-size: 0.8rem;
+  background: #f4f6fb;
+  color: var(--hud-accent-strong);
+  border: 1px solid var(--hud-panel-border);
+  border-radius: 4px;
+}
+
+.wallet-address {
+  font-family: "Rajdhani", monospace;
+  font-weight: 600;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  padding: 0.35rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.app-body {
+  height: 100%;
+  position: relative;
+  min-height: 0;
+}
+
+.map-container {
+  position: absolute;
+  inset: 0;
+}
+
+.map-container .leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+/* ---------------------------------------------------------------------
+   Session button — the primary action, and the single entry point to
+   Claim/Reinforce controls.
+
+   Centred along the bottom edge rather than tucked in a corner: it is
+   the one control a player uses every session, it wants to be under the
+   thumb on a phone, and centring it is what makes a casual game read as
+   "press this to play". Bigger, filled and captioned so it outranks the
+   small white utility FABs in the corners.
+
+   Pulses red while a session is actively recording, so the cue survives
+   closing the modal.
+   --------------------------------------------------------------------- */
+.session-fab {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Clear of the Mapbox attribution strip along the very bottom. */
+  bottom: max(1.75rem, env(safe-area-inset-bottom));
+  z-index: 20;
+  width: 84px;
+  height: 84px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #22c55e 0%, var(--hud-green) 55%, #0f7a37 100%);
+  /* A thick light ring separates the button from whatever map detail is behind it — the same
+     trick a game HUD uses so one control stays findable over an unpredictable background. */
+  border: 3px solid rgba(255, 255, 255, 0.92);
+  color: #ffffff;
+  clip-path: none;
+  box-shadow:
+    0 6px 18px rgba(15, 23, 42, 0.28),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+/* Presses should feel physical: the button dips and its shadow tightens. */
+.session-fab:active {
+  transform: translateX(-50%) scale(0.94);
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.3),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+}
+
+.session-fab.is-recording {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(160deg, #f87171 0%, #ef4444 55%, #b91c1c 100%);
+}
+
+.session-fab-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  /* Above the pulse ring, which is painted across the whole button. */
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+
+.session-fab-label {
+  font-family: "Rajdhani", sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* The caption sits on a coloured, partly translucent background, so it needs its own contrast
+     floor rather than relying on the gradient underneath staying dark enough. */
+  text-shadow: 0 1px 2px rgba(15, 23, 42, 0.35);
+  white-space: nowrap;
+}
+
+.session-fab-pulse {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: rgba(220, 38, 38, 0.35);
+  animation: avatar-pulse 1.8s ease-out infinite;
+}
+
+/* Secondary FAB (top-left, safe-area aware) — wallet connect + language, tucked away since
+   most players only touch it once per session. Smaller than the session FAB to keep visual
+   priority on gameplay. */
+/* Shared shape for the three utility FABs stacked down the right edge. They used to be flat
+   white circles with hairline outline icons, which at 44px read as grey smudges over a busy map —
+   the duel glyph in particular came across as a stray ">>". They now use the same visual language
+   as the session button: a colour that means something, a light ring to hold them off the map,
+   and a solid icon instead of a 1.6px stroke.
+
+   Kept smaller and deeper in tone than the session button so the hierarchy survives — these are
+   things a player opens occasionally, walking is what they came for. */
+.hud-fab {
+  position: absolute;
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: 20;
+  width: 40px;
+  height: 40px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  color: #ffffff;
+  clip-path: none;
+  box-shadow:
+    0 2px 8px rgba(15, 23, 42, 0.2),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.hud-fab:active {
+  transform: scale(0.92);
+  box-shadow:
+    0 1px 4px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+/* Small status pip, used for "wallet connected" and "duel running". A dot on the button beats
+   recolouring the whole thing: the button keeps its identity colour and the state still reads. */
+.hud-fab-pip {
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: var(--hud-green);
+}
+
+.hud-fab-pip.is-alert {
+  background: #f43f5e;
+  animation: avatar-pulse 1.8s ease-out infinite;
+}
+
+/* Identity blue, and first in the stack: the profile answers "how am I doing", which is the
+   question a player asks most after "how do I play". */
+.profile-fab {
+  top: max(1rem, env(safe-area-inset-top));
+  background: linear-gradient(160deg, #60a5fa 0%, var(--hud-accent) 55%, #1e3a8a 100%);
+}
+
+.settings-fab {
+  top: calc(max(1rem, env(safe-area-inset-top)) + 48px);
+  background: linear-gradient(160deg, #64748b 0%, #475569 55%, #334155 100%);
+}
+
+/* Zone FAB — stacked below the settings FAB (same top-right corner, offset down) since both
+   are secondary/infrequent actions compared to the primary session FAB. Amber accent to read
+   as "money/sponsor" distinct from the neutral settings gear and the green/red session state. */
+/* Gold, because this button is about money: a business paying CTC to sponsor an area. */
+.zone-fab {
+  top: calc(max(1rem, env(safe-area-inset-top)) + 96px);
+  background: linear-gradient(160deg, #fbbf24 0%, #f59e0b 55%, #b45309 100%);
+}
+
+.zone-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-bottom: 0.5rem;
+}
+
+/* Duel FAB — stacked below the Zone FAB (same top-right column). Rose/red accent to read as
+   "PvP" distinct from the amber zone icon and neutral settings gear; solid red + pulse while
+   the player has at least one Active duel running, echoing the session FAB's recording cue. */
+/* Crimson for the only player-vs-player mechanic in the game. */
+.duel-fab {
+  top: calc(max(1rem, env(safe-area-inset-top)) + 144px);
+  background: linear-gradient(160deg, #fb7185 0%, #e11d48 55%, #9f1239 100%);
+}
+
+.duel-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding-bottom: 0.5rem;
+}
+
+.duel-panel input {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  min-height: 40px;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--hud-panel-border);
+  background: #ffffff;
+  color: #1a2338;
+  font-size: 0.95rem;
+}
+
+.duel-list {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hud-panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.duel-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.duel-list-item button {
+  padding: 0.4rem 0.7rem;
+  min-height: 32px;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.zone-panel input {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  min-height: 40px;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--hud-panel-border);
+  background: #ffffff;
+  color: #1a2338;
+  font-size: 0.95rem;
+}
+
+.field-label {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hud-text-dim);
+  margin: 0.2rem 0 0.2rem;
+}
+
+.zone-list {
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hud-panel-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.zone-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.zone-list-item button {
+  padding: 0.4rem 0.7rem;
+  min-height: 32px;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.settings-label {
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--hud-text-dim);
+}
+
+.settings-row .lang-switcher {
+  width: auto;
+}
+
+/* ---------------------------------------------------------------------
+   Virtual joystick — bottom-left, lets the player drive movement (and,
+   while a session is recording, walk a simulated loop) without a real
+   GPS fix. Sits opposite the session FAB for balanced thumb reach.
+   --------------------------------------------------------------------- */
+/* Dev-only walking joystick. Parked up the left edge rather than along the bottom: the bottom
+   centre now belongs to the session button, and this control is scaffolding that disappears from
+   production builds entirely, so it should not shape the layout around it. Sits below the map's
+   zoom controls in the top-left. */
+.joystick-container {
+  position: absolute;
+  left: max(1rem, env(safe-area-inset-left));
+  top: 40%;
+  z-index: 20;
+}
+
+.joystick-base {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--hud-panel-border);
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.16);
+  touch-action: none;
+  position: relative;
+}
+
+.joystick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  background: var(--hud-accent);
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.25);
+  transition: transform 0.05s linear;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------
+   Session modal — opened via the FAB, closed via backdrop click, the
+   ✕ button, Escape, or automatically once a session starts recording.
+   --------------------------------------------------------------------- */
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(15, 23, 42, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-sheet {
+  width: 100%;
+  max-width: 420px;
+  max-height: 80%;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid var(--hud-panel-border);
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 30px rgba(16, 24, 40, 0.18);
+  padding: 0 1rem calc(1rem + env(safe-area-inset-bottom));
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 0;
+  background: inherit;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-family: "Rajdhani", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #0f172a;
+}
+
+.modal-close {
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  line-height: 1;
+  clip-path: none;
+  background: #f4f6fb;
+  border: 1px solid var(--hud-panel-border);
+  color: #334155;
+}
+
+.modal-body {
+  padding-bottom: 0.5rem;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Touch targets: WCAG/Apple/Material guidance is ~44-48px minimum tap height. */
+button {
+  padding: 0.7rem 1.1rem;
+  min-height: 44px;
+  border-radius: 8px;
+  border: 1px solid var(--hud-panel-border);
+  background: #eef2ff;
+  color: #1e293b;
+  cursor: pointer;
+  font-family: "Rajdhani", sans-serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  touch-action: manipulation;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+  transition: box-shadow 0.15s ease, transform 0.08s ease, background 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.12);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px) scale(0.99);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Primary "action" buttons (start/stop a session) get a stronger green/red treatment to read
+   as the main call-to-action, distinct from the secondary wallet/lang controls. */
+.session-panel button {
+  width: 100%;
+  background: #16a34a;
+  border-color: #15803d;
+  color: #ffffff;
+}
+
+.session-panel button:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.session-panel button.is-recording {
+  background: #dc2626;
+  border-color: #b91c1c;
+  color: #ffffff;
+}
+
+.session-panel button.is-recording:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.wallet-bar button {
+  padding: 0.5rem 0.9rem;
+  min-height: 38px;
+  font-size: 0.85rem;
+  background: var(--hud-accent);
+  border-color: var(--hud-accent-strong);
+  color: #ffffff;
+}
+
+.wallet-bar button:hover:not(:disabled) {
+  background: var(--hud-accent-strong);
+}
+
+select {
+  width: 100%;
+  padding: 0.6rem 0.5rem;
+  min-height: 44px;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--hud-panel-border);
+  background: #ffffff;
+  color: #1a2338;
+  font-size: 0.95rem;
+}
+
+.hint {
+  color: var(--hud-text-dim);
+  font-size: 0.82rem;
+  margin: 0.35rem 0;
+  line-height: 1.4;
+}
+
+.status {
+  font-size: 0.88rem;
+  color: var(--hud-accent-strong);
+  border-left: 2px solid var(--hud-accent);
+  padding-left: 0.5rem;
+}
+
+.error {
+  color: var(--hud-red);
+  font-size: 0.88rem;
+  border-left: 2px solid var(--hud-red);
+  padding-left: 0.5rem;
+}
+
+.map-container .mapboxgl-map {
+  height: 100%;
+  width: 100%;
+}
+
+/* Mapbox's navigation control sits top-left, which on phones collides with the safe area /
+   notch — give it breathing room from the very edge. */
+.mapboxgl-ctrl-top-left {
+  top: max(0.5rem, env(safe-area-inset-top)) !important;
+}
+
+/* Walking avatar marker (SVG directional beacon). Positioned relative so the pulsing ring
+   (below) can be centered behind it. */
+.player-avatar {
+  position: relative;
+  filter: drop-shadow(0 1px 4px rgba(16, 24, 40, 0.35));
+  pointer-events: none;
+}
+
+/* Expanding pulse ring under the heading arrow — reinforces the "live position" read.
+   Centered on the marker and unaffected by the arrow's own rotation since it's a sibling
+   element, not part of the rotated SVG. */
+.player-avatar-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.3);
+  animation: avatar-pulse 1.8s ease-out infinite;
+}
+
+@keyframes avatar-pulse {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* Small always-visible Base id label instead of a hover-only tooltip. */
+.base-label-popup .mapboxgl-popup-content {
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-family: "Rajdhani", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #ffffff !important;
+  color: #0f172a;
+  border: 1px solid var(--hud-panel-border);
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.15);
+}
+
+.base-label-popup .mapboxgl-popup-tip {
+  display: none;
+}
+
+/* Sponsored Zone label — same chip style as Base labels, amber-tinted to match the zone
+   overlay's dashed outline/fill color. */
+.zone-label-popup .mapboxgl-popup-content {
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-family: "Rajdhani", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #fffbeb !important;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.15);
+}
+
+.zone-label-popup .mapboxgl-popup-tip {
+  display: none;
+}
+
+/* ---------------------------------------------------------------------
+   Profile panel — the player's own numbers. Laid out as a row of large
+   figures rather than a list of labelled rows: these are the values a
+   player checks at a glance mid-walk, so the number should be the thing
+   the eye lands on, with the label subordinate to it.
+   --------------------------------------------------------------------- */
+.profile-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.profile-wallet {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.profile-wallet code {
+  font-family: "Rajdhani", monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--hud-accent-strong);
+}
+
+.profile-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.profile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.6rem 0.35rem;
+  border-radius: 10px;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-panel-border);
+}
+
+.profile-stat-value {
+  font-family: "Rajdhani", sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #0f172a;
+}
+
+.profile-stat-label {
+  font-size: 0.68rem;
+  color: var(--hud-text-dim);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.profile-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+/* Progress toward the next km-cap level. A bar, not a percentage, because the useful reading is
+   "nearly there" or "just started" rather than an exact number. */
+.profile-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--hud-panel-border);
+  overflow: hidden;
+}
+
+.profile-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #22c55e, var(--hud-green));
+  transition: width 0.3s ease;
+}

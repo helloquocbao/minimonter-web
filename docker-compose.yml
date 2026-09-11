@@ -1,0 +1,29 @@
+services:
+  worker:
+    build: ./worker
+    restart: unless-stopped
+    env_file: ./worker/.env
+
+  indexer:
+    build: ./indexer
+    restart: unless-stopped
+    env_file: ./indexer/.env
+    expose:
+      - "4000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - indexer
+
+volumes:
+  caddy_data:
+  caddy_config:
