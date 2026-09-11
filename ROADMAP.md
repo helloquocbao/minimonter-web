@@ -4,10 +4,10 @@ Phase 1 (shipped, see [README.md](README.md)) is territory painting: walk a loop
 cross-chain through the Attestcoin Protocol, own the ground. The only threat is a permissionless
 bot, and no player can ever take another player's territory.
 
-This document covers the five features that come next. It is written for the same audience as
-[PITCH.md](PITCH.md), but at implementation depth: for each feature, what it is, why it earns its
-place, how it actually lands on the contracts, and the part that is genuinely hard. Nothing here
-is built yet — the honest engineering notes are the point of the document, not a disclaimer on it.
+This document covers the five features that come next, at implementation depth: for each feature,
+what it is, why it earns its place, how it actually lands on the contracts, and the part that is
+genuinely hard. Nothing here is built yet — the honest engineering notes are the point of the
+document, not a disclaimer on it.
 
 **Two constraints shape all five**, so they are stated once here rather than repeated:
 
@@ -278,7 +278,8 @@ The order is dictated by dependencies and by where the risk sits, not by which f
 | 6 | **Stronger anti-cheat (proof-of-presence hardening)** | Hard prerequisite for invasion, not for anything above it. Territory changing hands on spoofable GPS is the one failure the game cannot absorb. |
 | 7 | **PvP invasion — opt-in, region-scoped, then global** | Last, because it depends on every row above and carries the most design risk. |
 
-Two items from [PITCH.md](PITCH.md)'s production checklist become hard dependencies rather than
-parallel work: **indexer persistence** (teams and combat history are stateful — in-memory replay
-from genesis stops being viable) and **the security audit** (invasion is the first mechanic where a
-contract bug costs players assets they earned, rather than costing the protocol testnet gas).
+Two items from [README.md](README.md#path-to-production-checklist)'s production checklist become
+hard dependencies rather than parallel work: **indexer persistence** (teams and combat history are
+stateful — in-memory replay from genesis stops being viable) and **the security audit** (invasion
+is the first mechanic where a contract bug costs players assets they earned, rather than costing
+the protocol testnet gas).
