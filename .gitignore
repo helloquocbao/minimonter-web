@@ -21,3 +21,4 @@ deployed-addresses.json
 
 # Demo player wallets (private mnemonic — never commit)
 .demo-wallets.json
+PITCH.md
